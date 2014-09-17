@@ -18,6 +18,7 @@ import webapp2
 import json
 import cgi
 import urllib
+import urlparse
 
 from google.appengine.api import users
 from google.appengine.ext import ndb
@@ -25,6 +26,12 @@ from google.appengine.api import urlfetch
 
 ###############################################################################
 # < templates>
+#< htmlParen>
+# wrap in p-tags
+def htmlParen(string):
+  string = '<p>%s</p>' % string
+  return string
+#</htmlParen>
 
 #< def html_generateContainerDiv>
 def html_generateContainerDiv(containerTitle,bgcolor):
@@ -38,14 +45,160 @@ def html_generateContainerDivBlue(containerTitle):
   return html_generateContainerDiv(containerTitle, divColor)
 #</def html_generateContainerDivBlue>
 
+################################################################
+#< def html_generate_body_template>
+# TODO: kwargs, make title optional, etc
+def html_generate_body_template(titleText,bodyHtml):
+  html = \
+    '''
+    <html>
+      <head>
+        <title>%s</title>
+      </head>
+      <body>
+        %s
+      </body>
+    </html>
+    '''
+  body = (html % (titleText,bodyHtml))
+  return body
+#</def html_generate_body_template>
+################################################################
+
 # </templates>
 ###############################################################################
 
 class MainHandler(webapp2.RequestHandler):
     def get(self):
         self.response.write('Hello world!')
-        linkText = '<h1>Links</h1><p><a href="%s">%s</a><p>\n' % ('/jsonreturntest','/jsonreturntest')
+        linkText = '<h1>Links</h1>'
+        linkText += '<p><a href="%s">%s</a><p>\n' % ('/jsonreturntest','/jsonreturntest')
+        linkText += '<p><a href="%s">%s</a><p>\n' % ('/formtest','/formtest')
         self.response.write(linkText)
+
+###############################################################################
+#< class_FormTest>
+class FormTest(webapp2.RequestHandler):
+  def get(self):
+    form = self.get_html_form()
+    self.response.write(form)
+  def get_html_form(self):
+    inputDict = {
+        #'name':'value',
+        'field1':'default1',
+        'field2':'default2',
+        'content':'default3',
+        'username':'charlie',
+        }
+    htmlInputStr = ''
+    for name in inputDict:
+
+      #TODO: why is '4em' not equal to '8 chars'? #SRC: http://stackoverflow.com/a/9686575
+      htmlInputStr += '<div><label for="%s" style = "display: inline-block; width: 6em; text-align: left;">%s:</label>\n' % (name, name)
+      htmlInputStr += '<input name="%s" value="%s"></div>\n' % (name, inputDict[name])
+
+    MAIN_PAGE_HTML = """\
+    <html>
+      <body>
+        <form name="dataprocess" action="/form2json" method="post">
+          <!-- changing "textarea" to "input" so I can press 'enter' to submit-->
+          <!-- <div><textarea name="content" rows="3" cols="60"></textarea></div> -->
+          <div><input name="action" value="dataprocess" type='hidden'></div>
+          %s
+          <div><input type="submit" value="Sign Guestbook"></div>
+        </form>
+      </body>
+    </html>
+    """
+    return MAIN_PAGE_HTML % htmlInputStr
+#</class_FormTest>
+###############################################################################
+
+
+###############################################################################
+#< class_form2json>
+# input x-www-form
+# output: ????
+# convert form data to json, send to service specified in form, 
+class form2json(webapp2.RequestHandler):
+  def post(self):
+    self.response.write(html_generateContainerDiv('<h1>Handler: JsonTest</h1>' ,'#C0C0C0'))
+    debug = 0
+    if(debug >= 1):
+      self.response.write(htmlParen('> self.request.body'))
+      self.response.write(self.request.body)
+  
+    # dict of lists: https://docs.python.org/2/library/urlparse.html#urlparse.parse_qs
+    jsondata  = json.dumps(urlparse.parse_qs(self.request.body))
+    # dict of key-value:  http://stackoverflow.com/a/8239167
+    jsondata  = json.dumps(dict(urlparse.parse_qsl(self.request.body)))
+    #debug printout
+    if(debug >= 1):    
+      self.response.write(htmlParen('> json.dumps(self.request.body)'))
+    self.response.write(htmlParen(jsondata))
+    
+    formDict = json.loads(jsondata)
+    # make the request
+    url = self.request.host_url
+    if('action'in formDict):
+      self.response.write(htmlParen('TODO: add one redirect per service that needs a form then read something like the request path to determine the action'))
+      self.response.write(htmlParen('found action in formDict'))
+      url += '/%s?jsonstr=' % formDict['action']
+    else:
+      url += '/%s?jsonstr=' % 'dataprocess'
+    jsonreq = urllib.quote_plus(jsondata)
+    self.response.write(htmlParen(jsonreq))
+    result = urlfetch.fetch(url + jsonreq,method=urlfetch.POST)
+    if(result.status_code == 200):
+      #jsonRetStr = json.loads(result.content)
+      jsonRetStr = result.content
+    #self.response.write(html_generateContainerDivBlue(htmlParen(jsonRetStr)))
+    responseStr = htmlParen('response from dataprocess')
+    responseStr += htmlParen('raw output:' + htmlParen(jsonRetStr))
+    jsonDict = json.loads(jsonRetStr)
+    if('greeting' in jsonDict):
+      responseStr += htmlParen('message:' + jsonDict['greeting'])
+    self.response.write(html_generateContainerDivBlue(responseStr))
+    
+    # TODO: not sure what to do with this now
+    #self.redirect('/formtest')
+#</class_form2json>
+###############################################################################
+
+
+###############################################################################
+#< class_DataProcessor>
+# receive json, do something, output json
+class DataProcessor(webapp2.RequestHandler):
+#  def get(self):
+#    debug = 0
+#    if(debug >= 1):
+#      self.response.write(htmlParen('> self.request.body'))
+#      self.response.write(self.request.body)
+  def get(self):
+    self.post()
+
+  def post(self):
+    debug = 0
+    
+    jsonDict = json.loads(self.request.get('jsonstr'))
+
+    # generate greeting
+    if('username' in jsonDict):
+      jsonDict['greeting'] = 'sorry %s!' % jsonDict['username']
+    jsonStr = json.dumps(jsonDict)
+
+    if(debug >= 1):
+      self.response.write(html_generateContainerDiv('<h1>Handler: DataProcessor</h1>' ,'#C0C0C0'))
+      self.response.write('<html><body>You wrote:<pre>')
+      self.response.write(cgi.escape(self.request.get('content')))
+      self.response.write(self.request.body)
+      self.response.write('</pre></body></html>')
+    #self.response.write(jsonStr)
+    #self.response.write(cgi.escape(self.request.get('jsonstr')))
+    self.response.write(jsonStr)
+#</class_DataProcessor>
+###############################################################################
 
 
 ###############################################################################
@@ -112,7 +265,9 @@ class JsonTest(webapp2.RequestHandler):
     #response += html_generateContainerDivBlue(greetText) # websafe colours
     # wrap in grey div
     response = html_generateContainerDiv('<h1>Handler: JsonTest</h1>' + response,'#C0C0C0')
-    response = '<html>\n  <body>\n' + response + '\n  </body>\n</html>'
+    #response = '<html>\n  <body>\n' + response + '\n  </body>\n</html>'
+   # title contains host as well to show in browser's "window name" to make alt+tabbing easier
+    response = html_generate_body_template('json Test Page @ ' + self.request.host_url,response)
     self.response.write(response)
   #< def_get_json_str>
   def get_json_str(self):
@@ -164,4 +319,7 @@ class JsonTest(webapp2.RequestHandler):
 app = webapp2.WSGIApplication([
     ('/', MainHandler),
     ('/jsonreturntest',JsonTest),
+    ('/formtest',FormTest),
+    ('/form2json',form2json),
+    ('/dataprocess',DataProcessor),
 ], debug=True)
