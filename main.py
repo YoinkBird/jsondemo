@@ -122,9 +122,9 @@ class FormTest(webapp2.RequestHandler):
 # convert form data to json, send to service specified in form, 
 class form2json(webapp2.RequestHandler):
   def post(self):
-    self.response.write(html_generateContainerDiv('<h1>Handler: JsonTest</h1>' ,'#C0C0C0'))
     debug = 0
     if(debug >= 1):
+      self.response.write(html_generateContainerDiv('<h1>Handler: JsonTest</h1>' ,'#C0C0C0'))
       self.response.write(htmlParen('> self.request.body'))
       self.response.write(self.request.body)
   
@@ -135,30 +135,38 @@ class form2json(webapp2.RequestHandler):
     #debug printout
     if(debug >= 1):    
       self.response.write(htmlParen('> json.dumps(self.request.body)'))
-    self.response.write(htmlParen(jsondata))
+      self.response.write(htmlParen(jsondata))
     
+    jsonRetStr = ''
     formDict = json.loads(jsondata)
     # make the request
     url = self.request.host_url
-    if('action'in formDict):
-      self.response.write(htmlParen('TODO: add one redirect per service that needs a form then read something like the request path to determine the action'))
-      self.response.write(htmlParen('found action in formDict'))
+    # default action is 'dataprocess'
+    if('action' in formDict):
+      if(debug >= 1):    
+        self.response.write(htmlParen('TODO: add one redirect per service that needs a form then read something like the request path to determine the action'))
+        self.response.write(htmlParen('found action in formDict'))
       url += '/%s?jsonstr=' % formDict['action']
     else:
       url += '/%s?jsonstr=' % 'dataprocess'
+    #TODO: validate response
     jsonreq = urllib.quote_plus(jsondata)
-    self.response.write(htmlParen(jsonreq))
+    if(debug >= 1):    
+      self.response.write(htmlParen(jsonreq))
     result = urlfetch.fetch(url + jsonreq,method=urlfetch.POST)
     if(result.status_code == 200):
       #jsonRetStr = json.loads(result.content)
       jsonRetStr = result.content
     #self.response.write(html_generateContainerDivBlue(htmlParen(jsonRetStr)))
-    responseStr = htmlParen('response from dataprocess')
-    responseStr += htmlParen('raw output:' + htmlParen(jsonRetStr))
+    if(debug >= 1):    
+      responseStr = htmlParen('response from dataprocess')
+      responseStr += htmlParen('raw output:' + htmlParen(jsonRetStr))
     jsonDict = json.loads(jsonRetStr)
-    if('greeting' in jsonDict):
-      responseStr += htmlParen('message:' + jsonDict['greeting'])
-    self.response.write(html_generateContainerDivBlue(responseStr))
+    if(debug >= 1):    
+      if('greeting' in jsonDict):
+        responseStr += htmlParen('message:' + jsonDict['greeting'])
+      response = html_generateContainerDivBlue(responseStr)
+    self.response.write(jsonRetStr)
     
     # TODO: not sure what to do with this now
     #self.redirect('/formtest')
