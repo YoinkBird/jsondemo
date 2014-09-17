@@ -91,12 +91,16 @@ class FormTest(webapp2.RequestHandler):
         'username':'charlie',
         }
     htmlInputStr = ''
+    labelCss = 'style = "display: inline-block; width: 6em; text-align: left;"'
     for name in inputDict:
 
       #TODO: why is '4em' not equal to '8 chars'? #SRC: http://stackoverflow.com/a/9686575
-      htmlInputStr += '<div><label for="%s" style = "display: inline-block; width: 6em; text-align: left;">%s:</label>\n' % (name, name)
+      htmlInputStr += '<div><label for="%s" %s>%s:</label>\n' % (name, labelCss, name)
       htmlInputStr += '<input name="%s" value="%s"></div>\n' % (name, inputDict[name])
 
+    html_form_checkbox = lambda name,value: '<input type="checkbox" name="%s" value="%s">' % (name,value)
+    htmlInputStr += '<label for="debug" '+labelCss+'>show json requests </label>'
+    htmlInputStr += html_form_checkbox('debug',1)
     MAIN_PAGE_HTML = """\
     <html>
       <body>
@@ -123,6 +127,7 @@ class FormTest(webapp2.RequestHandler):
 class form2json(webapp2.RequestHandler):
   def post(self):
     debug = 0
+    debug = self.request.get('debug',0) # for now, simply check if true is defined
     if(debug >= 1):
       self.response.write(html_generateContainerDiv('<h1>Handler: JsonTest</h1>' ,'#C0C0C0'))
       self.response.write(htmlParen('> self.request.body'))
@@ -162,11 +167,12 @@ class form2json(webapp2.RequestHandler):
       responseStr = htmlParen('response from dataprocess')
       responseStr += htmlParen('raw output:' + htmlParen(jsonRetStr))
     jsonDict = json.loads(jsonRetStr)
+    response = jsonRetStr
     if(debug >= 1):    
       if('greeting' in jsonDict):
         responseStr += htmlParen('message:' + jsonDict['greeting'])
       response = html_generateContainerDivBlue(responseStr)
-    self.response.write(jsonRetStr)
+    self.response.write(response)
     
     # TODO: not sure what to do with this now
     #self.redirect('/formtest')
