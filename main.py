@@ -44,6 +44,8 @@ def html_generateContainerDivBlue(containerTitle):
 class MainHandler(webapp2.RequestHandler):
     def get(self):
         self.response.write('Hello world!')
+        linkText = '<h1>Links</h1><p><a href="%s">%s</a><p>\n' % ('/jsonreturntest','/jsonreturntest')
+        self.response.write(linkText)
 
 
 ###############################################################################
