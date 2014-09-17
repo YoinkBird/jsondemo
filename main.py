@@ -101,20 +101,16 @@ class FormTest(webapp2.RequestHandler):
     html_form_checkbox = lambda name,value: '<input type="checkbox" name="%s" value="%s">' % (name,value)
     htmlInputStr += '<label for="debug" '+labelCss+'>show json requests </label>'
     htmlInputStr += html_form_checkbox('debug',1)
-    MAIN_PAGE_HTML = """\
-    <html>
-      <body>
-        <form name="dataprocess" action="/form2json" method="post">
-          <!-- changing "textarea" to "input" so I can press 'enter' to submit-->
-          <!-- <div><textarea name="content" rows="3" cols="60"></textarea></div> -->
-          <div><input name="action" value="dataprocess" type='hidden'></div>
-          %s
-          <div><input type="submit" value="Sign Guestbook"></div>
-        </form>
-      </body>
-    </html>
+    HTML_FORM = """\
+    <form name="dataprocess" action="/form2json" method="post">
+      <div><input name="action" value="dataprocess" type='hidden'></div>
+      %s
+      <div><input type="submit" value="Sign Guestbook"></div>
+    </form>
     """
-    return MAIN_PAGE_HTML % htmlInputStr
+    response = HTML_FORM % htmlInputStr
+    response = html_generate_body_template('json Form Test Page @ ' + self.request.host_url,response)
+    return response
 #</class_FormTest>
 ###############################################################################
 
