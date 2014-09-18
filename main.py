@@ -122,13 +122,14 @@ class FormTest(webapp2.RequestHandler):
 # convert form data to json, send to service specified in form, 
 class form2json(webapp2.RequestHandler):
   def post(self):
-    debug = 0
+    debug = 1
     debug = self.request.get('debug',0) # for now, simply check if true is defined
     if(debug >= 1):
       self.response.write(html_generateContainerDiv('<h1>Handler: JsonTest</h1>' ,'#C0C0C0'))
       self.response.write(htmlParen('> self.request.body'))
       self.response.write(self.request.body)
   
+    jsondata  = json.dumps((self.request.body))
     # dict of lists: https://docs.python.org/2/library/urlparse.html#urlparse.parse_qs
     jsondata  = json.dumps(urlparse.parse_qs(self.request.body))
     # dict of key-value:  http://stackoverflow.com/a/8239167
@@ -154,10 +155,29 @@ class form2json(webapp2.RequestHandler):
     jsonreq = urllib.quote_plus(jsondata)
     if(debug >= 1):    
       self.response.write(htmlParen(jsonreq))
-    result = urlfetch.fetch(url + jsonreq,method=urlfetch.POST)
+    #result = urlfetch.fetch(url + jsonreq,method=urlfetch.POST)
+    #json style
+    url = self.request.host_url + '/' + formDict['action']
+    if('action' not in formDict):
+      self.response.write(htmlParen('\naction not in formDict\n'))
+    url = self.request.host_url + '/' + 'dataprocess'
+    #TODO: rename to response
+    # https://developers.google.com/appengine/docs/python/appidentity/#Python_Asserting_identity_to_Google_APIs
+    result = urlfetch.fetch(
+        #url + jsonreq,
+        url,
+        payload = jsondata,
+        method=urlfetch.POST,
+        headers = {'Content-Type' : "application/json"},
+        )
+    jsonRetStr = 'fail'
     if(result.status_code == 200):
       #jsonRetStr = json.loads(result.content)
       jsonRetStr = result.content
+    #self.response.write('<h1>urlfetch response</h1>' + result.content)
+    #return
+    #raise Exception("Call failed. Status code %s. Body %s", result.status_code, result.content)
+
     #self.response.write(html_generateContainerDivBlue(htmlParen(jsonRetStr)))
     if(debug >= 1):    
       responseStr = htmlParen('response from dataprocess')
@@ -191,11 +211,15 @@ class DataProcessor(webapp2.RequestHandler):
   def post(self):
     debug = 0
     
-    jsonDict = json.loads(self.request.get('jsonstr'))
+    #jsonDict = json.loads(self.request.get('jsonstr'))
+    jsonDict = json.loads(self.request.body)
 
     # generate greeting
     if('username' in jsonDict):
       jsonDict['greeting'] = 'sorry %s!' % jsonDict['username']
+    #del jsonDict
+    #jsonDict = {}
+    #jsonDict['hi'] = 'good'
     jsonStr = json.dumps(jsonDict)
 
     if(debug >= 1):
